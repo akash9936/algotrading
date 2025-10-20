@@ -67,8 +67,8 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
-logger.info(f"📁 Logs folder: {logs_folder}")
-logger.info(f"📁 Live data folder: {live_data_folder}")
+logger.info(f"[FOLDER] Logs folder: {logs_folder}")
+logger.info(f"[FOLDER] Live data folder: {live_data_folder}")
 
 ###############################################################################
 # CONFIGURATION
@@ -88,12 +88,12 @@ take_profit_pct = 30.0            # 30% take profit
 
 # Risk Management
 max_positions = 3                 # Maximum simultaneous positions (divides capital equally)
-max_trade_size = 50000            # TOTAL capital for ALL trades (₹50,000 / 3 = ₹16,666 per trade)
+max_trade_size = 20000            # TOTAL capital for ALL trades (₹50,000 / 3 = ₹16,666 per trade)
 
 # Safety Settings
 require_manual_approval = False    # Require manual approval for each trade
 check_interval_seconds = 300      # Check every 5 minutes
-trading_start_time = "01:00"      # Start trading after market opens
+trading_start_time = "09:15"      # Start trading after market opens
 trading_end_time = "15:00"        # Stop trading before market closes
 
 # Stocks to trade (Nifty 50 subset)
@@ -184,14 +184,14 @@ class LiveMACrossoverStrategy:
         """
         try:
             if not os.path.exists(self.positions_file):
-                logger.info("✓ No saved positions file found (fresh start)")
+                logger.info("[OK] No saved positions file found (fresh start)")
                 return
 
             with open(self.positions_file, 'r') as f:
                 saved_positions = json.load(f)
 
             if not saved_positions:
-                logger.info("✓ No saved positions found")
+                logger.info("[OK] No saved positions found")
                 return
 
             # Restore positions
@@ -202,13 +202,13 @@ class LiveMACrossoverStrategy:
 
                 self.active_positions[symbol] = position
 
-            logger.info(f"💾 Restored {len(saved_positions)} positions from local file:")
+            logger.info(f"[SAVED] Restored {len(saved_positions)} positions from local file:")
             for symbol, pos in self.active_positions.items():
-                logger.info(f"  - {symbol}: {pos['quantity']} shares @ ₹{pos['entry_price']:.2f}")
+                logger.info(f"  - {symbol}: {pos['quantity']} shares @ Rs.{pos['entry_price']:.2f}")
 
         except Exception as e:
-            logger.error(f"❌ Error loading positions from file: {str(e)}")
-            logger.warning("⚠️  Starting with empty positions")
+            logger.error(f"[ERROR] Error loading positions from file: {str(e)}")
+            logger.warning("[WARNING] Starting with empty positions")
 
     def save_positions_to_file(self):
         """
@@ -228,10 +228,10 @@ class LiveMACrossoverStrategy:
             with open(self.positions_file, 'w') as f:
                 json.dump(serializable_positions, f, indent=4)
 
-            logger.debug(f"💾 Saved {len(serializable_positions)} positions to {self.positions_file}")
+            logger.debug(f"[SAVED] Saved {len(serializable_positions)} positions to {self.positions_file}")
 
         except Exception as e:
-            logger.error(f"❌ Error saving positions to file: {str(e)}")
+            logger.error(f"[ERROR] Error saving positions to file: {str(e)}")
 
     def sync_positions_from_broker(self):
         """
@@ -241,13 +241,13 @@ class LiveMACrossoverStrategy:
         even if the script was restarted.
         """
         try:
-            logger.info("\n🔄 Syncing positions from Zerodha...")
+            logger.info("\n[SYNC] Syncing positions from Zerodha...")
 
             # Get holdings (delivery positions)
             holdings = self.broker.get_holdings()
 
             if not holdings:
-                logger.info("✓ No existing holdings found in Zerodha")
+                logger.info("[OK] No existing holdings found in Zerodha")
                 return
 
             synced_count = 0
@@ -267,7 +267,7 @@ class LiveMACrossoverStrategy:
                         old_price = self.active_positions[symbol]['entry_price']
 
                         if old_qty != quantity or abs(old_price - avg_price) > 0.01:
-                            logger.info(f"  🔄 Updated {symbol}: {old_qty}→{quantity} shares, ₹{old_price:.2f}→₹{avg_price:.2f}")
+                            logger.info(f"  [SYNC] Updated {symbol}: {old_qty}->{quantity} shares, Rs.{old_price:.2f}->Rs.{avg_price:.2f}")
                             self.active_positions[symbol]['quantity'] = quantity
                             self.active_positions[symbol]['entry_price'] = avg_price
                             updated_count += 1
@@ -282,27 +282,27 @@ class LiveMACrossoverStrategy:
                             'synced': True  # Mark as synced from broker
                         }
                         synced_count += 1
-                        logger.info(f"  ✓ Synced {symbol}: {quantity} shares @ ₹{avg_price:.2f}")
+                        logger.info(f"  [OK] Synced {symbol}: {quantity} shares @ Rs.{avg_price:.2f}")
 
             if synced_count > 0 or updated_count > 0:
-                logger.info(f"\n✓ Synced {synced_count} new, updated {updated_count} existing positions")
+                logger.info(f"\n[OK] Synced {synced_count} new, updated {updated_count} existing positions")
                 logger.info("  These positions will now be monitored for stop-loss/take-profit")
 
                 # Save updated positions to file
                 self.save_positions_to_file()
             else:
-                logger.info("✓ No new positions found in tradeable stocks list")
+                logger.info("[OK] No new positions found in tradeable stocks list")
 
         except Exception as e:
-            logger.error(f"❌ Error syncing positions from broker: {str(e)}")
-            logger.warning("⚠️  Continuing with existing positions")
+            logger.error(f"[ERROR] Error syncing positions from broker: {str(e)}")
+            logger.warning("[WARNING] Continuing with existing positions")
 
     def sync_portfolio_to_mongodb(self):
         """
         Sync portfolio to MongoDB from active positions and Zerodha
         """
         try:
-            logger.info("\n🔄 Syncing portfolio to MongoDB...")
+            logger.info("\n[SYNC] Syncing portfolio to MongoDB...")
 
             # Sync from Zerodha holdings
             holdings = self.broker.get_holdings()
@@ -321,12 +321,12 @@ class LiveMACrossoverStrategy:
             # Get and display portfolio
             portfolio = self.mongodb.get_portfolio()
             if portfolio:
-                logger.info(f"\n📊 Current Portfolio ({len(portfolio)} positions):")
+                logger.info(f"\n[DATA] Current Portfolio ({len(portfolio)} positions):")
                 for pos in portfolio:
-                    logger.info(f"  - {pos['symbol']}: {pos['quantity']} @ ₹{pos.get('averagePrice', 0):.2f}")
+                    logger.info(f"  - {pos['symbol']}: {pos['quantity']} @ Rs.{pos.get('averagePrice', 0):.2f}")
 
         except Exception as e:
-            logger.error(f"❌ Error syncing portfolio to MongoDB: {str(e)}")
+            logger.error(f"[ERROR] Error syncing portfolio to MongoDB: {str(e)}")
 
     def save_live_price(self, symbol, price, source, full_data=None):
         """
@@ -361,7 +361,7 @@ class LiveMACrossoverStrategy:
             if not os.path.exists(self.live_data_file):
                 # Create new file with header
                 df_new.to_csv(self.live_data_file, index=False, mode='w')
-                logger.debug(f"📊 Created live data file: {self.live_data_file}")
+                logger.debug(f"[DATA] Created live data file: {self.live_data_file}")
             else:
                 # Append without header
                 df_new.to_csv(self.live_data_file, index=False, mode='a', header=False)
@@ -373,7 +373,7 @@ class LiveMACrossoverStrategy:
             self.mongodb.save_live_price(symbol, full_data, source)
 
         except Exception as e:
-            logger.error(f"❌ Error saving live price for {symbol}: {str(e)}")
+            logger.error(f"[ERROR] Error saving live price for {symbol}: {str(e)}")
 
     def get_realtime_price(self, symbol):
         """
@@ -411,7 +411,7 @@ class LiveMACrossoverStrategy:
                     if stock.get('symbol') == symbol:
                         ltp = stock.get('lastPrice')
                         if ltp:
-                            logger.info(f"✓ Using NSE India price for {symbol}: ₹{ltp:.2f}")
+                            logger.info(f"[OK] Using NSE India price for {symbol}: Rs.{ltp:.2f}")
                             # Save full NSE data to MongoDB
                             self.save_live_price(symbol, ltp, "NSE", full_data=stock)
                             return ltp
@@ -419,15 +419,15 @@ class LiveMACrossoverStrategy:
             # If NSE data failed, try simple price fetch
             ltp = self.nse_fetcher.get_stock_price(symbol)
             if ltp:
-                logger.info(f"✓ Using NSE India simple price for {symbol}: ₹{ltp:.2f}")
+                logger.info(f"[OK] Using NSE India simple price for {symbol}: Rs.{ltp:.2f}")
                 self.save_live_price(symbol, ltp, "NSE")
                 return ltp
 
-            logger.warning(f"⚠️ Could not fetch price for {symbol} from any source")
+            logger.warning(f"[WARNING] Could not fetch price for {symbol} from any source")
             return None
 
         except Exception as e:
-            logger.error(f"❌ Error fetching real-time price for {symbol}: {str(e)}")
+            logger.error(f"[ERROR] Error fetching real-time price for {symbol}: {str(e)}")
             return None
 
     def get_historical_data(self, symbol, days=100):
@@ -457,12 +457,12 @@ class LiveMACrossoverStrategy:
             )
 
             if df.empty:
-                logger.warning(f"⚠️ No historical data for {symbol}")
+                logger.warning(f"[WARNING] No historical data for {symbol}")
                 return pd.DataFrame()
 
             # Validate we have enough data for 50-day MA
             if len(df) < ma_long_period:
-                logger.warning(f"⚠️ Insufficient data for {symbol}: {len(df)} days (need {ma_long_period} for 50-day MA)")
+                logger.warning(f"[WARNING] Insufficient data for {symbol}: {len(df)} days (need {ma_long_period} for 50-day MA)")
                 return pd.DataFrame()
 
             # Calculate MAs
@@ -475,24 +475,71 @@ class LiveMACrossoverStrategy:
             return df
 
         except Exception as e:
-            logger.error(f"❌ Error fetching historical data for {symbol}: {str(e)}")
+            logger.error(f"[ERROR] Error fetching historical data for {symbol}: {str(e)}")
             return pd.DataFrame()
 
     def check_entry_signal(self, symbol):
         """
         Check if there's a golden cross entry signal
 
+        FIXED: Now fetches live price and incorporates it into MA calculation
+
         Returns:
         --------
         bool : True if entry signal detected
         """
         try:
+            # Get historical data (from CSV files)
             df = self.get_historical_data(symbol)
 
             if df.empty or len(df) < 2:
                 return False
 
-            # Get current and previous MA values
+            # CRITICAL FIX: Fetch TODAY's live price
+            live_price = self.get_realtime_price(symbol)
+
+            if not live_price:
+                logger.warning(f"[WARNING] Could not fetch live price for {symbol}, skipping")
+                return False
+
+            # Create today's candle using live price
+            # Note: For daily MA calculation, we use live price as Close
+            # Open/High/Low are approximated as live price (intraday)
+            from datetime import date
+            today = pd.Timestamp.today().normalize()
+
+            # Check if today's data already exists in df
+            if today not in df.index:
+                # Create new row for today with live price
+                today_candle = pd.DataFrame({
+                    'Open': [live_price],
+                    'High': [live_price],
+                    'Low': [live_price],
+                    'Close': [live_price],
+                    'Volume': [0]  # Volume unknown for live price
+                }, index=[today])
+
+                # Append today's data
+                df = pd.concat([df, today_candle])
+                logger.debug(f"[DATA] Added today's candle for {symbol}: Close={live_price:.2f}")
+            else:
+                # Update today's close price with live price
+                df.loc[today, 'Close'] = live_price
+                df.loc[today, 'High'] = max(df.loc[today, 'High'], live_price)
+                df.loc[today, 'Low'] = min(df.loc[today, 'Low'], live_price)
+                logger.debug(f"[DATA] Updated today's candle for {symbol}: Close={live_price:.2f}")
+
+            # Recalculate MAs with live price included
+            df['MA_20'] = self.calculate_sma(df['Close'], ma_short_period)
+            df['MA_50'] = self.calculate_sma(df['Close'], ma_long_period)
+
+            # Update cached data
+            self.historical_data[symbol] = df
+
+            if len(df) < 2:
+                return False
+
+            # Get current and previous MA values (NOW includes today's live price)
             ma_20_curr = df['MA_20'].iloc[-1]
             ma_50_curr = df['MA_50'].iloc[-1]
             ma_20_prev = df['MA_20'].iloc[-2]
@@ -506,13 +553,17 @@ class LiveMACrossoverStrategy:
             golden_cross = (ma_20_prev <= ma_50_prev) and (ma_20_curr > ma_50_curr)
 
             if golden_cross:
-                logger.info(f"🎯 GOLDEN CROSS DETECTED: {symbol}")
+                logger.info(f"[SIGNAL] GOLDEN CROSS DETECTED: {symbol}")
+                logger.info(f"   Live Price: Rs.{live_price:.2f}")
                 logger.info(f"   20 MA: {ma_20_curr:.2f} | 50 MA: {ma_50_curr:.2f}")
+                logger.info(f"   Previous: 20 MA: {ma_20_prev:.2f} | 50 MA: {ma_50_prev:.2f}")
 
             return golden_cross
 
         except Exception as e:
-            logger.error(f"❌ Error checking entry signal for {symbol}: {str(e)}")
+            logger.error(f"[ERROR] Error checking entry signal for {symbol}: {str(e)}")
+            import traceback
+            logger.debug(traceback.format_exc())
             return False
 
     def check_exit_signal(self, symbol, position):
@@ -534,18 +585,18 @@ class LiveMACrossoverStrategy:
 
             # Stop Loss
             if pnl_pct <= -stop_loss_pct:
-                logger.warning(f"🛑 STOP LOSS HIT: {symbol} ({pnl_pct:.2f}%)")
+                logger.warning(f"[STOP] STOP LOSS HIT: {symbol} ({pnl_pct:.2f}%)")
                 return True, "Stop Loss"
 
             # Take Profit
             if pnl_pct >= take_profit_pct:
-                logger.info(f"✅ TAKE PROFIT HIT: {symbol} ({pnl_pct:.2f}%)")
+                logger.info(f"[OK] TAKE PROFIT HIT: {symbol} ({pnl_pct:.2f}%)")
                 return True, "Take Profit"
 
             return False, ""
 
         except Exception as e:
-            logger.error(f"❌ Error checking exit signal for {symbol}: {str(e)}")
+            logger.error(f"[ERROR] Error checking exit signal for {symbol}: {str(e)}")
             return False, ""
 
     def calculate_deployed_capital(self):
@@ -598,22 +649,22 @@ class LiveMACrossoverStrategy:
             # Calculate remaining capital from total allocation
             remaining_capital = max_trade_size - deployed_capital
 
-            logger.info(f"💰 Capital allocation:")
-            logger.info(f"   Total allocated: ₹{max_trade_size:,.2f}")
-            logger.info(f"   Per-trade allocation: ₹{per_trade_allocation:,.2f} (₹{max_trade_size:,.0f} / {max_positions})")
-            logger.info(f"   Currently deployed: ₹{deployed_capital:,.2f}")
-            logger.info(f"   Remaining: ₹{remaining_capital:,.2f}")
+            logger.info(f"[CAPITAL] Capital allocation:")
+            logger.info(f"   Total allocated: Rs.{max_trade_size:,.2f}")
+            logger.info(f"   Per-trade allocation: Rs.{per_trade_allocation:,.2f} (Rs.{max_trade_size:,.0f} / {max_positions})")
+            logger.info(f"   Currently deployed: Rs.{deployed_capital:,.2f}")
+            logger.info(f"   Remaining: Rs.{remaining_capital:,.2f}")
 
             # Check if we have any capital left
             if remaining_capital <= 0:
-                logger.error(f"❌ All capital exhausted (₹{deployed_capital:,.2f} / ₹{max_trade_size:,.2f})")
+                logger.error(f"[ERROR] All capital exhausted (Rs.{deployed_capital:,.2f} / Rs.{max_trade_size:,.2f})")
                 logger.error(f"   Waiting for positions to exit before entering new trades")
                 return 0
 
             # Also check broker's available cash (safety check)
             available_cash = self.broker.get_available_cash()
             if available_cash <= 0:
-                logger.error(f"❌ Insufficient broker balance: ₹{available_cash:,.2f}")
+                logger.error(f"[ERROR] Insufficient broker balance: Rs.{available_cash:,.2f}")
                 logger.error(f"   Cannot place trades with zero or negative balance!")
                 return 0
 
@@ -621,35 +672,35 @@ class LiveMACrossoverStrategy:
             if remaining_capital >= per_trade_allocation:
                 # Use full per-trade allocation
                 trade_capital = per_trade_allocation
-                logger.info(f"   Using full allocation: ₹{trade_capital:,.2f}")
+                logger.info(f"   Using full allocation: Rs.{trade_capital:,.2f}")
             else:
                 # Use remaining capital (partial)
                 trade_capital = remaining_capital
-                logger.info(f"   Using remaining capital: ₹{trade_capital:,.2f} (partial allocation)")
+                logger.info(f"   Using remaining capital: Rs.{trade_capital:,.2f} (partial allocation)")
 
             # Also don't exceed broker's available cash
             if trade_capital > available_cash:
-                logger.warning(f"⚠️  Trade capital (₹{trade_capital:,.2f}) exceeds broker cash (₹{available_cash:,.2f})")
+                logger.warning(f"[WARNING] Trade capital (Rs.{trade_capital:,.2f}) exceeds broker cash (Rs.{available_cash:,.2f})")
                 trade_capital = available_cash
-                logger.info(f"   Adjusted to broker's available cash: ₹{trade_capital:,.2f}")
+                logger.info(f"   Adjusted to broker's available cash: Rs.{trade_capital:,.2f}")
 
             # Ensure trade_capital is positive
             if trade_capital <= 0:
-                logger.error(f"❌ Invalid capital allocation: ₹{trade_capital:,.2f}")
+                logger.error(f"[ERROR] Invalid capital allocation: Rs.{trade_capital:,.2f}")
                 return 0
 
             # Calculate quantity
             quantity = int(trade_capital / price)
 
             if quantity == 0:
-                logger.warning(f"⚠️ Calculated quantity is 0 (capital: ₹{trade_capital:,.2f}, price: ₹{price:.2f})")
+                logger.warning(f"[WARNING] Calculated quantity is 0 (capital: Rs.{trade_capital:,.2f}, price: Rs.{price:.2f})")
 
-            logger.info(f"📊 Position sizing: ₹{trade_capital:,.2f} / ₹{price:.2f} = {quantity} shares")
+            logger.info(f"[DATA] Position sizing: Rs.{trade_capital:,.2f} / Rs.{price:.2f} = {quantity} shares")
 
             return quantity
 
         except Exception as e:
-            logger.error(f"❌ Error calculating position size: {str(e)}")
+            logger.error(f"[ERROR] Error calculating position size: {str(e)}")
             return 0
 
     def get_user_approval(self, action, symbol, quantity, price):
@@ -664,22 +715,22 @@ class LiveMACrossoverStrategy:
             return True
 
         print("\n" + "=" * 80)
-        print("⚠️  TRADE APPROVAL REQUIRED")
+        print("[WARNING] TRADE APPROVAL REQUIRED")
         print("=" * 80)
         print(f"Action:   {action}")
         print(f"Symbol:   {symbol}")
         print(f"Quantity: {quantity}")
-        print(f"Price:    ₹{price:.2f}")
-        print(f"Value:    ₹{quantity * price:,.2f}")
+        print(f"Price:    Rs.{price:.2f}")
+        print(f"Value:    Rs.{quantity * price:,.2f}")
         print("=" * 80)
 
         response = input("Approve this trade? (yes/no): ").strip().lower()
 
         if response in ['yes', 'y']:
-            logger.info(f"✓ Trade approved by user")
+            logger.info(f"[OK] Trade approved by user")
             return True
         else:
-            logger.info(f"✗ Trade rejected by user")
+            logger.info(f"[X] Trade rejected by user")
             return False
 
     def enter_position(self, symbol):
@@ -694,13 +745,13 @@ class LiveMACrossoverStrategy:
             # Get current price
             ltp = self.get_realtime_price(symbol)
             if not ltp:
-                logger.error(f"❌ Could not get LTP for {symbol}")
+                logger.error(f"[ERROR] Could not get LTP for {symbol}")
                 return False
 
             # Calculate position size
             quantity = self.calculate_position_size(symbol, ltp)
             if quantity == 0:
-                logger.warning(f"⚠️ Insufficient capital for {symbol}")
+                logger.warning(f"[WARNING] Insufficient capital for {symbol}")
                 return False
 
             # Get MA values for logging
@@ -721,7 +772,7 @@ class LiveMACrossoverStrategy:
                 return False
 
             # Place order
-            logger.warning(f"🔵 ENTERING POSITION: BUY {quantity} {symbol} @ ₹{ltp:.2f}")
+            logger.warning(f"[BUY] ENTERING POSITION: BUY {quantity} {symbol} @ Rs.{ltp:.2f}")
 
             order_id = self.broker.place_order(
                 symbol=symbol,
@@ -772,14 +823,14 @@ class LiveMACrossoverStrategy:
                     action='BUY'
                 )
 
-                logger.info(f"✓ Position entered successfully. Order ID: {order_id}")
-                logger.info(f"💾 Position saved to local file")
-                logger.info(f"📊 Portfolio updated in MongoDB")
-                logger.info(f"📊 Stop Loss: ₹{stop_loss_price:.2f} | Take Profit: ₹{take_profit_price:.2f}")
+                logger.info(f"[OK] Position entered successfully. Order ID: {order_id}")
+                logger.info(f"[SAVED] Position saved to local file")
+                logger.info(f"[DATA] Portfolio updated in MongoDB")
+                logger.info(f"[DATA] Stop Loss: Rs.{stop_loss_price:.2f} | Take Profit: Rs.{take_profit_price:.2f}")
                 return True
 
         except Exception as e:
-            logger.error(f"❌ Error entering position for {symbol}: {str(e)}")
+            logger.error(f"[ERROR] Error entering position for {symbol}: {str(e)}")
             return False
 
     def exit_position(self, symbol, reason):
@@ -793,7 +844,7 @@ class LiveMACrossoverStrategy:
         try:
             position = self.active_positions.get(symbol)
             if not position:
-                logger.warning(f"⚠️ No position found for {symbol}")
+                logger.warning(f"[WARNING] No position found for {symbol}")
                 return False
 
             quantity = position['quantity']
@@ -801,7 +852,7 @@ class LiveMACrossoverStrategy:
             # Get current price
             ltp = self.get_realtime_price(symbol)
             if not ltp:
-                logger.error(f"❌ Could not get LTP for {symbol}")
+                logger.error(f"[ERROR] Could not get LTP for {symbol}")
                 return False
 
             # Get user approval
@@ -809,7 +860,7 @@ class LiveMACrossoverStrategy:
                 return False
 
             # Place sell order
-            logger.warning(f"🔴 EXITING POSITION: SELL {quantity} {symbol} @ ₹{ltp:.2f} ({reason})")
+            logger.warning(f"[SELL] EXITING POSITION: SELL {quantity} {symbol} @ Rs.{ltp:.2f} ({reason})")
 
             order_id = self.broker.place_order(
                 symbol=symbol,
@@ -872,21 +923,21 @@ class LiveMACrossoverStrategy:
                 }
                 self.mongodb.log_sell_order(sell_data)
 
-                logger.info(f"✓ Position exited. P&L: ₹{pnl:,.2f} ({pnl_pct:.2f}%)")
+                logger.info(f"[OK] Position exited. P&L: Rs.{pnl:,.2f} ({pnl_pct:.2f}%)")
 
                 # Remove from active positions
                 del self.active_positions[symbol]
 
                 # Save updated positions to file
                 self.save_positions_to_file()
-                logger.info(f"💾 Position removed from local file")
-                logger.info(f"📊 Portfolio updated in MongoDB")
-                logger.info(f"📊 Sell order logged to sells collection")
+                logger.info(f"[SAVED] Position removed from local file")
+                logger.info(f"[DATA] Portfolio updated in MongoDB")
+                logger.info(f"[DATA] Sell order logged to sells collection")
 
                 return True
 
         except Exception as e:
-            logger.error(f"❌ Error exiting position for {symbol}: {str(e)}")
+            logger.error(f"[ERROR] Error exiting position for {symbol}: {str(e)}")
             return False
 
     def scan_for_opportunities(self):
@@ -894,22 +945,34 @@ class LiveMACrossoverStrategy:
         logger.info("\n" + "=" * 80)
         logger.info(f"SCANNING FOR OPPORTUNITIES - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         logger.info("=" * 80)
+        logger.info(f"[SCAN] Scanning {len(TRADEABLE_STOCKS)} stocks for MA crossover signals...")
+        logger.info(f"[SCAN] This will fetch live prices for all stocks and save to MongoDB")
 
         opportunities = []
+        scanned_count = 0
 
         for symbol in TRADEABLE_STOCKS:
+            scanned_count += 1
+
             # Skip if already holding
             if symbol in self.active_positions:
+                logger.debug(f"[SCAN] {scanned_count}/{len(TRADEABLE_STOCKS)} - {symbol}: Already in position, skipping")
                 continue
 
-            # Check for entry signal
+            logger.debug(f"[SCAN] {scanned_count}/{len(TRADEABLE_STOCKS)} - {symbol}: Checking for entry signal...")
+
+            # Check for entry signal (now fetches live price and saves to MongoDB)
             if self.check_entry_signal(symbol):
                 opportunities.append(symbol)
+                logger.info(f"[SCAN] {scanned_count}/{len(TRADEABLE_STOCKS)} - {symbol}: OPPORTUNITY FOUND!")
 
+        logger.info("=" * 80)
+        logger.info(f"[SCAN] Scan complete: {scanned_count} stocks checked")
         if opportunities:
-            logger.info(f"✓ Found {len(opportunities)} opportunities: {', '.join(opportunities)}")
+            logger.info(f"[OK] Found {len(opportunities)} opportunities: {', '.join(opportunities)}")
         else:
-            logger.info("No opportunities found")
+            logger.info("[OK] No opportunities found")
+        logger.info("=" * 80)
 
         return opportunities
 
@@ -932,7 +995,7 @@ class LiveMACrossoverStrategy:
                 entry_price = position['entry_price']
                 pnl_pct = ((ltp - entry_price) / entry_price) * 100
 
-                logger.info(f"{symbol}: Entry ₹{entry_price:.2f} | Current ₹{ltp:.2f} | P&L {pnl_pct:+.2f}%")
+                logger.info(f"{symbol}: Entry Rs.{entry_price:.2f} | Current Rs.{ltp:.2f} | P&L {pnl_pct:+.2f}%")
 
                 # Check exit signals
                 should_exit, exit_reason = self.check_exit_signal(symbol, position)
@@ -940,7 +1003,7 @@ class LiveMACrossoverStrategy:
                     self.exit_position(symbol, exit_reason)
 
             except Exception as e:
-                logger.error(f"❌ Error monitoring {symbol}: {str(e)}")
+                logger.error(f"[ERROR] Error monitoring {symbol}: {str(e)}")
 
     def is_trading_hours(self):
         """Check if current time is within trading hours"""
@@ -956,7 +1019,7 @@ class LiveMACrossoverStrategy:
     def run(self):
         """Main trading loop"""
         logger.info("\n" + "=" * 80)
-        logger.info("🚀 STARTING LIVE TRADING")
+        logger.info("[START] STARTING LIVE TRADING")
         logger.info("=" * 80)
         logger.info(f"Trading Hours: {trading_start_time} - {trading_end_time}")
         logger.info(f"Check Interval: {check_interval_seconds} seconds")
@@ -983,15 +1046,15 @@ class LiveMACrossoverStrategy:
                         self.enter_position(symbol)
 
                 # Wait before next iteration
-                logger.info(f"\n⏸ Waiting {check_interval_seconds} seconds...\n")
+                logger.info(f"\n[PAUSE] Waiting {check_interval_seconds} seconds...\n")
                 time.sleep(check_interval_seconds)
 
         except KeyboardInterrupt:
-            logger.warning("\n\n⚠️ KEYBOARD INTERRUPT - Stopping trading")
+            logger.warning("\n\n[WARNING] KEYBOARD INTERRUPT - Stopping trading")
             self.stop_trading = True
 
         except Exception as e:
-            logger.error(f"\n\n❌ UNEXPECTED ERROR: {str(e)}")
+            logger.error(f"\n\n[ERROR] UNEXPECTED ERROR: {str(e)}")
             self.stop_trading = True
 
         finally:
@@ -1000,13 +1063,13 @@ class LiveMACrossoverStrategy:
     def shutdown(self):
         """Graceful shutdown"""
         logger.info("\n" + "=" * 80)
-        logger.info("🛑 SHUTTING DOWN")
+        logger.info("[STOP] SHUTTING DOWN")
         logger.info("=" * 80)
 
         # Save current positions (in case they weren't saved)
         if self.active_positions:
             self.save_positions_to_file()
-            logger.info(f"💾 Active positions saved: {self.positions_file}")
+            logger.info(f"[SAVED] Active positions saved: {self.positions_file}")
             logger.info(f"   (Will be restored on next startup)")
 
         # Save trades log to logs folder
@@ -1017,31 +1080,31 @@ class LiveMACrossoverStrategy:
             with open(trades_file, 'w') as f:
                 json.dump(self.trades_log, f, indent=4, default=str)
 
-            logger.info(f"✓ Trades log saved: {trades_file}")
+            logger.info(f"[OK] Trades log saved: {trades_file}")
 
         # Save live prices summary
         if self.live_prices_log:
-            logger.info(f"✓ Live prices logged: {len(self.live_prices_log)} data points")
-            logger.info(f"✓ Live data saved: {self.live_data_file}")
+            logger.info(f"[OK] Live prices logged: {len(self.live_prices_log)} data points")
+            logger.info(f"[OK] Live data saved: {self.live_data_file}")
 
         # Summary
         logger.info(f"\nActive Positions: {len(self.active_positions)}")
         if self.active_positions:
             for symbol, pos in self.active_positions.items():
-                logger.info(f"  - {symbol}: {pos['quantity']} shares @ ₹{pos['entry_price']:.2f}")
+                logger.info(f"  - {symbol}: {pos['quantity']} shares @ Rs.{pos['entry_price']:.2f}")
 
         logger.info(f"\nCompleted Trades: {len(self.trades_log)}")
 
         if self.trades_log:
             total_pnl = sum(t['pnl'] for t in self.trades_log)
-            logger.info(f"Total P&L: ₹{total_pnl:,.2f}")
+            logger.info(f"Total P&L: Rs.{total_pnl:,.2f}")
 
         # Close MongoDB connection
         if self.mongodb:
             self.mongodb.close()
 
-        logger.info("\n✓ Shutdown complete")
-        logger.info(f"📁 All files saved in:")
+        logger.info("\n[OK] Shutdown complete")
+        logger.info(f"[FOLDER] All files saved in:")
         logger.info(f"   Logs: {logs_folder}")
         logger.info(f"   Live Data: {live_data_folder}")
         logger.info("=" * 80)
@@ -1066,8 +1129,8 @@ def check_and_download_data():
     data_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'data', 'nifty50')
 
     if not os.path.exists(data_folder):
-        print("⚠️  Historical data folder not found")
-        print("📥 Downloading historical data...")
+        print("[WARNING] Historical data folder not found")
+        print("[DOWNLOAD] Downloading historical data...")
         return download_historical_data()
 
     # Check if data files exist
@@ -1075,8 +1138,8 @@ def check_and_download_data():
     files = glob.glob(os.path.join(data_folder, "*.csv"))
 
     if not files:
-        print("⚠️  No data files found")
-        print("📥 Downloading historical data...")
+        print("[WARNING] No data files found")
+        print("[DOWNLOAD] Downloading historical data...")
         return download_historical_data()
 
     # Check if data is recent (updated today)
@@ -1089,12 +1152,12 @@ def check_and_download_data():
     mod_date = mod_time.date()
 
     if mod_date < today:
-        print(f"⚠️  Data is outdated (last updated: {mod_date})")
-        print("📥 Updating historical data...")
+        print(f"[WARNING] Data is outdated (last updated: {mod_date})")
+        print("[DOWNLOAD] Updating historical data...")
         return download_historical_data()
 
-    print(f"✓ Historical data is up-to-date ({len(files)} files)")
-    print(f"✓ Last updated: {mod_date}")
+    print(f"[OK] Historical data is up-to-date ({len(files)} files)")
+    print(f"[OK] Last updated: {mod_date}")
     print("=" * 80)
     return True
 
@@ -1111,7 +1174,7 @@ def download_historical_data():
         download_script = os.path.join(os.path.dirname(__file__), 'download_data.py')
 
         if not os.path.exists(download_script):
-            print(f"❌ Download script not found: {download_script}")
+            print(f"[ERROR] Download script not found: {download_script}")
             return False
 
         print("\nRunning automated data download...")
@@ -1136,29 +1199,29 @@ def download_historical_data():
 
         print("\n" + "=" * 80)
         if successful == total:
-            print(f"✓ Successfully downloaded {successful}/{total} stocks")
+            print(f"[OK] Successfully downloaded {successful}/{total} stocks")
             print("=" * 80)
             return True
         elif successful > 0:
             # Calculate success rate
             success_rate = (successful / total) * 100
-            print(f"⚠️  Partial download: {successful}/{total} stocks ({success_rate:.1f}% success)")
+            print(f"[WARNING] Partial download: {successful}/{total} stocks ({success_rate:.1f}% success)")
             print("=" * 80)
 
             # Auto-continue if we have at least 90% of stocks
             if success_rate >= 90:
-                print(f"✓ Success rate {success_rate:.1f}% is acceptable, continuing...")
+                print(f"[OK] Success rate {success_rate:.1f}% is acceptable, continuing...")
                 return True
             else:
-                print(f"❌ Success rate {success_rate:.1f}% is too low (need at least 90%)")
+                print(f"[ERROR] Success rate {success_rate:.1f}% is too low (need at least 90%)")
                 return False
         else:
-            print(f"❌ Failed to download data")
+            print(f"[ERROR] Failed to download data")
             print("=" * 80)
             return False
 
     except Exception as e:
-        print(f"❌ Error downloading data: {str(e)}")
+        print(f"[ERROR] Error downloading data: {str(e)}")
         print("=" * 80)
         return False
 
@@ -1172,10 +1235,10 @@ def main():
     print("=" * 80)
     print("LIVE MA CROSSOVER STRATEGY - ZERODHA")
     print("=" * 80)
-    print("⚠️  WARNING: This will execute REAL trades with REAL money!")
+    print("[WARNING] WARNING: This will execute REAL trades with REAL money!")
     print("=" * 80)
     print()
-    print("📊 DATA SOURCES:")
+    print("[DATA] DATA SOURCES:")
     print("  - Historical: Local data files (data/nifty50/)")
     print("  - Real-time: NSE India API")
     print("=" * 80)
@@ -1184,13 +1247,13 @@ def main():
     data_ready = check_and_download_data()
 
     if not data_ready:
-        print("\n❌ Cannot proceed without historical data")
+        print("\n[ERROR] Cannot proceed without historical data")
         print("Historical data is required for MA calculation")
         return
 
     # Load configuration
     if not os.path.exists(config_path):
-        print(f"❌ Config file not found: {config_path}")
+        print(f"[ERROR] Config file not found: {config_path}")
         print("Please create config.json with your Zerodha API credentials")
         print("See config_template.json for reference")
         return
@@ -1203,7 +1266,7 @@ def main():
     access_token = config.get('access_token')
 
     if not api_key or not api_secret:
-        print("❌ API credentials missing in config.json")
+        print("[ERROR] API credentials missing in config.json")
         return
 
     # Initialize broker
@@ -1212,7 +1275,7 @@ def main():
 
     # Check if we need to login
     if not access_token:
-        print("\n⚠️ Access token not found. You need to login first.")
+        print("\n[WARNING] Access token not found. You need to login first.")
         login_url = broker.login()
         print(f"\n1. Open this URL in your browser:")
         print(f"   {login_url}")
@@ -1229,36 +1292,36 @@ def main():
             with open(config_path, 'w') as f:
                 json.dump(config, f, indent=4)
 
-            print("✓ Access token saved to config.json")
+            print("[OK] Access token saved to config.json")
 
     # Verify connection
     profile = broker.get_profile()
     if not profile:
-        print("❌ Failed to connect to Zerodha")
+        print("[ERROR] Failed to connect to Zerodha")
         return
 
-    print(f"✓ Connected as: {profile['user_name']}")
+    print(f"[OK] Connected as: {profile['user_name']}")
 
     # Show available cash
     available_cash = broker.get_available_cash()
-    print(f"✓ Available cash: ₹{available_cash:,.2f}")
+    print(f"[OK] Available cash: Rs.{available_cash:,.2f}")
 
     # Final confirmation
     print("\n" + "=" * 80)
-    print("⚠️  FINAL CONFIRMATION")
+    print("[WARNING] FINAL CONFIRMATION")
     print("=" * 80)
     print(f"This strategy will:")
     print(f"  - Monitor {len(TRADEABLE_STOCKS)} stocks")
     print(f"  - Execute up to {max_positions} simultaneous positions")
-    print(f"  - Use TOTAL capital of ₹{max_trade_size:,} (across all positions)")
-    print(f"  - Allocate ₹{max_trade_size / max_positions:,.2f} per trade (₹{max_trade_size:,} / {max_positions})")
+    print(f"  - Use TOTAL capital of Rs.{max_trade_size:,} (across all positions)")
+    print(f"  - Allocate Rs.{max_trade_size / max_positions:,.2f} per trade (Rs.{max_trade_size:,} / {max_positions})")
     print(f"  - {'REQUIRE' if require_manual_approval else 'NOT REQUIRE'} manual approval for each trade")
     print("=" * 80)
 
     response = input("\nProceed with live trading? (yes/no): ").strip().lower()
 
     if response not in ['yes', 'y']:
-        print("✗ Live trading cancelled")
+        print("[X] Live trading cancelled")
         return
 
     # Initialize and run strategy
