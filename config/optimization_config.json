@@ -1,0 +1,117 @@
+{
+  "optimization": {
+    "description": "Strategy Optimization Framework Configuration",
+    "version": "1.0.0",
+    "created": "2025-10-07"
+  },
+  "data": {
+    "source_path": "src/data/nifty50/",
+    "start_date": "2022-01-03",
+    "end_date": "2025-10-01",
+    "stocks": "all"
+  },
+  "parameter_ranges": {
+    "rsi": {
+      "period": [10, 12, 14, 16, 18, 20],
+      "oversold": [25, 30, 35, 40, 45],
+      "overbought": [60, 65, 70, 75, 80]
+    },
+    "macd": {
+      "fast_period": [8, 10, 12, 14, 16],
+      "slow_period": [20, 24, 26, 28, 30],
+      "signal_period": [7, 9, 11, 12]
+    },
+    "risk_management": {
+      "stop_loss_pct": [2.0, 2.5, 3.0, 3.5, 4.0, 5.0],
+      "take_profit_pct": [5.0, 7.0, 10.0, 12.0, 15.0],
+      "trailing_stop_pct": [2.0, 2.5, 3.0, 4.0, 5.0],
+      "max_hold_days": [10, 20, 30, 45, 60]
+    },
+    "position_management": {
+      "max_positions": [1, 2, 3, 4, 5],
+      "capital_per_position_pct": [100, 50, 33, 25, 20]
+    },
+    "filters": {
+      "ma_trend_period": [20, 50, 100, 200],
+      "volume_multiplier": [1.0, 1.2, 1.5, 2.0],
+      "min_signal_strength": [0.0, 0.05, 0.1, 0.15, 0.2]
+    }
+  },
+  "optimization_settings": {
+    "sample_size": 5000,
+    "n_jobs": -1,
+    "top_n_strategies": 100,
+    "primary_metric": "sharpe_ratio",
+    "secondary_metrics": ["win_rate", "total_return", "max_drawdown"]
+  },
+  "strategies_to_test": [
+    "rsi_mean_reversion",
+    "macd_crossover",
+    "bollinger_band_mean_reversion",
+    "ma_crossover",
+    "atr_breakout",
+    "donchian_breakout",
+    "multi_signal_confluence",
+    "weighted_signal_scoring"
+  ],
+  "market_regimes": {
+    "bull_market": {
+      "condition": "price > MA50 and price > MA200"
+    },
+    "bear_market": {
+      "condition": "price < MA50 and price < MA200"
+    },
+    "sideways_market": {
+      "condition": "oscillating around MA"
+    },
+    "high_volatility": {
+      "condition": "ATR > 90th percentile"
+    },
+    "low_volatility": {
+      "condition": "ATR < 50th percentile"
+    }
+  },
+  "walk_forward": {
+    "train_periods": [
+      {"start": "2022-01-01", "end": "2022-12-31"},
+      {"start": "2023-01-01", "end": "2023-12-31"},
+      {"start": "2024-01-01", "end": "2024-12-31"}
+    ],
+    "test_periods": [
+      {"start": "2023-01-01", "end": "2023-12-31"},
+      {"start": "2024-01-01", "end": "2024-12-31"},
+      {"start": "2025-01-01", "end": "2025-10-01"}
+    ]
+  },
+  "monte_carlo": {
+    "n_simulations": 10000,
+    "confidence_levels": [0.05, 0.5, 0.95],
+    "var_level": 0.95,
+    "cvar_level": 0.95
+  },
+  "output": {
+    "results_dir": "result/optimization/",
+    "reports_dir": "reports/",
+    "dashboards_dir": "dashboards/",
+    "save_all_trades": true,
+    "generate_visualizations": true
+  },
+  "performance_metrics": {
+    "required": [
+      "total_return",
+      "sharpe_ratio",
+      "win_rate",
+      "max_drawdown",
+      "profit_factor",
+      "total_trades",
+      "avg_win",
+      "avg_loss"
+    ],
+    "optional": [
+      "sortino_ratio",
+      "calmar_ratio",
+      "recovery_factor",
+      "expectancy"
+    ]
+  }
+}
