@@ -1,2 +1,0 @@
-Strategy,Initial Investment,Final Value,Total Return,Return %,Number of Trades,Buy Trades,Sell Trades,Winning Trades,Losing Trades,Win Rate %,Avg Holding Days,Min RS Threshold,Exit RS Threshold,Lookback Period,Test Period,Trading Days
-Sequential RS (Alphabetical),100000,68875.57780126954,-31124.422198730463,-31.12442219873046,102,51,50,20,30,40.0,26.6,5.0,-2.0,20,2022-02-01 to 2025-10-01,905

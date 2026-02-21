@@ -1,8 +1,0 @@
-# Ignore config files with credentials
-config.json
-
-# Ignore log files
-*.log
-
-# Ignore trade data
-live_trades_*.json

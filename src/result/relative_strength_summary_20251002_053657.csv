@@ -1,2 +1,0 @@
-Strategy,Initial Investment,Final Value,Total Return,Return %,Number of Trades,Buy Trades,Sell Trades,Winning Trades,Losing Trades,Win Rate %,Lookback Period,Rebalance Period,Top N Stocks,Test Period,Trading Days
-Relative Strength Ranking,100000,142586.43800569244,42586.43800569244,42.58643800569244,524,264,260,130,130,50.0,20,10,5,2022-02-01 to 2025-10-01,905
